@@ -10,6 +10,7 @@
 03.02.2019 v7 преобразование в формат  F("")
 04.02.2019 v8 переменные с префиксом boiler-down-
 04.02.2019 v9 в вывод добавлено ("data: {")
+04.02.2019 v10 добавлена функция freeRam()
 \*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
 /*******************************************************************\
 Сервер boiler6kw выдает данные: 
@@ -29,7 +30,7 @@
 
 #define DEVICE_ID "boiler-down";
 //String DEVICE_ID "boiler6kw";
-#define VERSION 9
+#define VERSION 10
 
 #define RESET_UPTIME_TIME 43200000  //  = 30 * 24 * 60 * 60 * 1000 
                                     // reset after 30 days uptime 
@@ -74,6 +75,10 @@ RBD::Timer ds18ConversionTimer;
 \*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
 void setup() {
   Serial.begin(9600);
+
+  Serial.print(F("FREE RAM: "));
+  Serial.println(freeRam());
+
   Ethernet.begin(mac);
     while (!Serial) continue;
   delay(1000);
@@ -100,6 +105,8 @@ void setup() {
 
   ds18Sensors.begin();
   ds18DeviceCount = ds18Sensors.getDeviceCount();
+
+  
 
   getSettings();
 
@@ -200,6 +207,9 @@ String createDataString() {
   resultData.concat(F(","));
   resultData.concat(F("\n\"version\":"));
   resultData.concat((int)VERSION);
+  resultData.concat(F(","));
+  resultData.concat(F("\n\"freeRam\":"));
+  resultData.concat(freeRam());
   resultData.concat(F(","));
   resultData.concat(F("\n\"data\": {"));
     resultData.concat(F("\n\"boiler-down-flow\":"));
@@ -349,6 +359,15 @@ bool readRequest(EthernetClient& client) {
   return false;
 }
 
+/*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*\
+            Количество свободной памяти
+\*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
+int freeRam()
+{
+  extern int __heap_start, *__brkval;
+  int v;
+  return (int)&v - (__brkval == 0 ? (int)&__heap_start : (int)__brkval);
+}
 /*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*\
             end
 \*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
