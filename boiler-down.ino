@@ -153,7 +153,7 @@ void realTimeService() {
 
   reqClient.println(F("HTTP/1.1 200 OK"));
   reqClient.println(F("Content-Type: application/json"));
-  reqClient.println(F("Content-Length: "));
+  reqClient.print(F("Content-Length: "));
   reqClient.println(data.length());
   reqClient.println();
   reqClient.print(data);
