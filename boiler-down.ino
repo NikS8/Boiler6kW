@@ -7,7 +7,8 @@
 11.01.2019 v4 переименование boiler6kw в boilerDown
 23.01.2019 v5 добавлены ds18 ТА и в №№ ds18 только последние 2 знака 
 28.01.2019 v6 переименование boilerDown в boiler-down
-04.02.2019 v7 преобразование в формат  F("")
+03.02.2019 v7 преобразование в формат  F("")
+04.02.2019 v8 переменные с префиксом boiler-down-
 \*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
 /*******************************************************************\
 Сервер boiler6kw выдает данные: 
@@ -27,7 +28,7 @@
 
 #define DEVICE_ID "boiler-down";
 //String DEVICE_ID "boiler6kw";
-#define VERSION 6
+#define VERSION 8
 
 #define RESET_UPTIME_TIME 43200000  //  = 30 * 24 * 60 * 60 * 1000 
                                     // reset after 30 days uptime 
@@ -92,7 +93,7 @@ void setup() {
   emon3.current(3, 9.29);
 
   pinMode(PIN_FLOW_SENSOR, INPUT);
-  digitalWrite(PIN_FLOW_SENSOR, HIGH);
+  //digitalWrite(PIN_FLOW_SENSOR, HIGH);
   attachInterrupt(PIN_INTERRUPT_FLOW_SENSOR, flowSensorPulseCounter, FALLING);
   sei();
 
@@ -199,27 +200,28 @@ String createDataString() {
   resultData.concat(F("\n\"version\":"));
   resultData.concat((int)VERSION);
   resultData.concat(F(","));
-  resultData.concat(F("\n\"flow\":"));
+  resultData.concat(F("\n\"boiler-down-flow\":"));
   resultData.concat(String(getFlowData()));
   resultData.concat(F(","));
-  resultData.concat(F("\n\"trans-1\":"));
+  resultData.concat(F("\n\"boiler-down-trans-1\":"));
   resultData.concat(String(emon1.calcIrms(1480)));
   resultData.concat(F(","));
-  resultData.concat(F("\n\"trans-2\":"));
+  resultData.concat(F("\n\"boiler-down-trans-2\":"));
   resultData.concat(String(emon2.calcIrms(1480)));
   resultData.concat(F(","));
-  resultData.concat(F("\n\"trans-3\":"));
+  resultData.concat(F("\n\"boiler-down-trans-3\":"));
   resultData.concat(String(emon3.calcIrms(1480)));
   for (uint8_t index = 0; index < ds18DeviceCount; index++)
   {
     DeviceAddress deviceAddress;
     ds18Sensors.getAddress(deviceAddress, index);
     String stringAddr = dsAddressToString(deviceAddress);
-    resultData.concat(F(","));
-    resultData.concat(F("\n\"ds"));
-    resultData.concat(index);
-    resultData.concat(F(" "));
-    resultData.concat(stringAddr.substring(14));
+    resultData.concat(F(",\n\""));
+   // resultData.concat(F("\n\"ds"));
+   // resultData.concat(index);
+   // resultData.concat(F(" "));
+    //resultData.concat(stringAddr.substring(14));
+    resultData.concat(stringAddr);
     resultData.concat(F("\":"));
     resultData.concat(ds18Sensors.getTempC(deviceAddress));
     }
