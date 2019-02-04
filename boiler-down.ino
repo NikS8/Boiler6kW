@@ -7,6 +7,7 @@
 11.01.2019 v4 переименование boiler6kw в boilerDown
 23.01.2019 v5 добавлены ds18 ТА и в №№ ds18 только последние 2 знака 
 28.01.2019 v6 переименование boilerDown в boiler-down
+04.02.2019 v7 преобразование в формат  F("")
 \*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
 /*******************************************************************\
 Сервер boiler6kw выдает данные: 
@@ -17,7 +18,6 @@
     датчики температуры DS18B20
 /*******************************************************************/
 
-//#include <ArduinoJson.h>
 #include <Ethernet2.h>
 #include <SPI.h>
 #include <OneWire.h>
@@ -25,7 +25,7 @@
 #include <EmonLib.h>
 #include <RBD_Timer.h>
 
-#define DEVICE_ID "boilerDown";
+#define DEVICE_ID "boiler-down";
 //String DEVICE_ID "boiler6kw";
 #define VERSION 6
 
@@ -33,8 +33,8 @@
                                     // reset after 30 days uptime 
 #define REST_SERVICE_URL "192.168.1.210"
 #define REST_SERVICE_PORT 3010
-char settingsServiceUri[] = "/settings/boilerDown";
-char intervalLogServiceUri[] = "/intervalLog/boilerDown";
+char settingsServiceUri[] = "/settings/boiler-down";
+char intervalLogServiceUri[] = "/intervalLog/boiler-down";
 
 byte mac[] = {0xDE, 0xAD, 0xBE, 0xEF, 0xEE, 0xED};
 EthernetServer httpServer(40160);
@@ -83,11 +83,7 @@ void setup() {
   Serial.println(F("Server is ready."));
   Serial.print(F("Please connect to http://"));
   Serial.println(Ethernet.localIP());
-  /*
-  pinMode(PIN_FLOW_SENSOR, INPUT);
-  attachInterrupt(PIN_INTERRUPT_FLOW_SENSOR, flowSensorPulseCounter, RISING);
-  sei();
-*/
+  
   pinMode( A1, INPUT );
   pinMode( A2, INPUT );
   pinMode( A3, INPUT );
@@ -96,6 +92,7 @@ void setup() {
   emon3.current(3, 9.29);
 
   pinMode(PIN_FLOW_SENSOR, INPUT);
+  digitalWrite(PIN_FLOW_SENSOR, HIGH);
   attachInterrupt(PIN_INTERRUPT_FLOW_SENSOR, flowSensorPulseCounter, FALLING);
   sei();
 
@@ -145,9 +142,10 @@ void realTimeService() {
 
   String data = createDataString();
 
-  reqClient.println("HTTP/1.1 200 OK");
-  reqClient.println("Content-Type: application/json");
-  reqClient.println("Content-Length: " + data.length());
+  reqClient.println(F("HTTP/1.1 200 OK"));
+  reqClient.println(F("Content-Type: application/json"));
+  reqClient.println(F("Content-Length: "));
+  reqClient.println(data.length());
   reqClient.println();
   reqClient.print(data);
 
@@ -193,34 +191,40 @@ void flowSensorPulseCounter()
 \*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
 String createDataString() {
   String resultData;
-  resultData.concat("{");
-  resultData.concat("\n\"deviceId\":");
+  resultData.concat(F("{"));
+  resultData.concat(F("\n\"deviceId\":"));
   //  resultData.concat(String(DEVICE_ID));
-  resultData.concat("\"boilerDown\"");
-  resultData.concat(",");
-  resultData.concat("\n\"version\":");
+  resultData.concat(F("\"boiler-down\""));
+  resultData.concat(F(","));
+  resultData.concat(F("\n\"version\":"));
   resultData.concat((int)VERSION);
-  resultData.concat(",");
-  resultData.concat("\n\"flow\":" + String(getFlowData()));
-  resultData.concat(",");
-  resultData.concat("\n\"trans-1\":" + String(emon1.calcIrms(1480)));
-  resultData.concat(",");
-  resultData.concat("\n\"trans-2\":" + String(emon2.calcIrms(1480)));
-  resultData.concat(",");
-  resultData.concat("\n\"trans-3\":" + String(emon3.calcIrms(1480)));
+  resultData.concat(F(","));
+  resultData.concat(F("\n\"flow\":"));
+  resultData.concat(String(getFlowData()));
+  resultData.concat(F(","));
+  resultData.concat(F("\n\"trans-1\":"));
+  resultData.concat(String(emon1.calcIrms(1480)));
+  resultData.concat(F(","));
+  resultData.concat(F("\n\"trans-2\":"));
+  resultData.concat(String(emon2.calcIrms(1480)));
+  resultData.concat(F(","));
+  resultData.concat(F("\n\"trans-3\":"));
+  resultData.concat(String(emon3.calcIrms(1480)));
   for (uint8_t index = 0; index < ds18DeviceCount; index++)
   {
     DeviceAddress deviceAddress;
     ds18Sensors.getAddress(deviceAddress, index);
     String stringAddr = dsAddressToString(deviceAddress);
-    resultData.concat(",");
-    resultData.concat("\n\"ds");
+    resultData.concat(F(","));
+    resultData.concat(F("\n\"ds"));
     resultData.concat(index);
-    resultData.concat(" ");
-    resultData.concat(stringAddr.substring(14) + "\":" + ds18Sensors.getTempC(deviceAddress));
+    resultData.concat(F(" "));
+    resultData.concat(stringAddr.substring(14));
+    resultData.concat(F("\":"));
+    resultData.concat(ds18Sensors.getTempC(deviceAddress));
     }
     
-  resultData.concat("\n}");
+  resultData.concat(F("\n}"));
 
     return resultData;
 }
@@ -282,18 +286,19 @@ int getFlowData()
       { // do post request
         httpClient.println((char)"POST" + reqUri + "HTTP/1.1");
         //httpClient.println("Host: checkip.dyndns.com"); // TODO remove if not necessary
-        httpClient.println("Content-Type: application/csv;");
-        httpClient.println("Content-Length: " + reqData.length());
+        httpClient.println(F("Content-Type: application/csv;"));
+        httpClient.println(F("Content-Length: "));
+        httpClient.println(reqData.length());
         httpClient.println();
         httpClient.print(reqData);
       } else { // do get request
       httpClient.println( (char) "GET" +  reqUri + "HTTP/1.1");
       //httpClient.println("Host: checkip.dyndns.com"); // TODO remove if not necessary
-      httpClient.println("Connection: close");  //close 1.1 persistent connection  
+      httpClient.println(F("Connection: close"));  //close 1.1 persistent connection  
       httpClient.println(); //end of get request
     }
   } else {
-    Serial.println("connection failed"); //error message if no client connect
+    Serial.println(F("connection failed")); //error message if no client connect
     Serial.println();
   }
 
