@@ -11,6 +11,7 @@
 04.02.2019 v8 переменные с префиксом boiler-down-
 04.02.2019 v9 в вывод добавлено ("data: {")
 04.02.2019 v10 добавлена функция freeRam()
+06.02.2019 v11 изменение вывода №№ DS18 и префикс заменен на "bd-"
 \*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
 /*******************************************************************\
 Сервер boiler6kw выдает данные: 
@@ -30,7 +31,7 @@
 
 #define DEVICE_ID "boiler-down";
 //String DEVICE_ID "boiler6kw";
-#define VERSION 10
+#define VERSION 11
 
 #define RESET_UPTIME_TIME 43200000  //  = 30 * 24 * 60 * 60 * 1000 
                                     // reset after 30 days uptime 
@@ -207,40 +208,44 @@ String createDataString() {
   resultData.concat(F(","));
   resultData.concat(F("\n\"version\":"));
   resultData.concat((int)VERSION);
-  resultData.concat(F(","));
-  resultData.concat(F("\n\"freeRam\":"));
-  resultData.concat(freeRam());
+  
   resultData.concat(F(","));
   resultData.concat(F("\n\"data\": {"));
-    resultData.concat(F("\n\"boiler-down-flow\":"));
-    resultData.concat(String(getFlowData()));
-    resultData.concat(F(","));
-    resultData.concat(F("\n\"boiler-down-trans-1\":"));
+
+    resultData.concat(F("\n\"bd-trans-1\":"));
     resultData.concat(String(emon1.calcIrms(1480), 1));
     resultData.concat(F(","));
-    resultData.concat(F("\n\"boiler-down-trans-2\":"));
+    resultData.concat(F("\n\"bd-trans-2\":"));
     resultData.concat(String(emon2.calcIrms(1480), 1));
     resultData.concat(F(","));
-    resultData.concat(F("\n\"boiler-down-trans-3\":"));
+    resultData.concat(F("\n\"bd-trans-3\":"));
     resultData.concat(String(emon3.calcIrms(1480), 1));
     for (uint8_t index = 0; index < ds18DeviceCount; index++)
     {
       DeviceAddress deviceAddress;
       ds18Sensors.getAddress(deviceAddress, index);
-      String stringAddr = dsAddressToString(deviceAddress);
+      
       resultData.concat(F(",\n\""));
-      // resultData.concat(F("\n\"ds"));
-      // resultData.concat(index);
-      // resultData.concat(F(" "));
-      //resultData.concat(stringAddr.substring(14));
-      resultData.concat(stringAddr);
+      for (uint8_t i = 0; i < 8; i++)
+      {
+        if (deviceAddress[i] < 16)  resultData.concat("0");
+
+        resultData.concat(String(deviceAddress[i], HEX));
+      }
       resultData.concat(F("\":"));
       resultData.concat(ds18Sensors.getTempC(deviceAddress));
     }
+    resultData.concat(F(","));
+    resultData.concat(F("\n\"bd-flow\":"));
+    resultData.concat(String(getFlowData()));
+    
     resultData.concat(F("\n}"));
-  resultData.concat(F("\n}"));
+    resultData.concat(F(","));
+    resultData.concat(F("\n\"freeRam\":"));
+    resultData.concat(freeRam());
+    resultData.concat(F("\n}"));
 
-  return resultData;
+    return resultData;
 }
 
 /*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*\
@@ -324,19 +329,6 @@ int getFlowData()
   }
 
   return responseText;
-}
-
-/*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*\
-            dsAddressToString
-\*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
-
-String dsAddressToString(DeviceAddress deviceAddress) {
-  String address;
-  for (uint8_t i = 0; i < 8; i++) {
-    if (deviceAddress[i] < 16 ) address += "0";
-    address += String(deviceAddress[i], HEX);
-  }
-  return address;
 }
 
 /*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*\
