@@ -12,6 +12,8 @@
 04.02.2019 v9 в вывод добавлено ("data: {")
 04.02.2019 v10 добавлена функция freeRam()
 06.02.2019 v11 изменение вывода №№ DS18 и префикс заменен на "bd-"
+10.02.2019 v12 удален intrevalLogService
+10.02.2019 v13
 \*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
 /*******************************************************************\
 Сервер boiler6kw выдает данные: 
@@ -31,18 +33,13 @@
 
 #define DEVICE_ID "boiler-down";
 //String DEVICE_ID "boiler6kw";
-#define VERSION 11
+#define VERSION 13
 
 #define RESET_UPTIME_TIME 43200000  //  = 30 * 24 * 60 * 60 * 1000 
                                     // reset after 30 days uptime 
-#define REST_SERVICE_URL "192.168.1.210"
-#define REST_SERVICE_PORT 3010
-char settingsServiceUri[] = "/settings/boilerdown";
-char intervalLogServiceUri[] = "/intervalLog/boilerdown";
 
 byte mac[] = {0xDE, 0xAD, 0xBE, 0xEF, 0xEE, 0xED};
 EthernetServer httpServer(40160);
-EthernetClient httpClient;
 
 EnergyMonitor emon1;
 EnergyMonitor emon2;
@@ -65,10 +62,7 @@ volatile long flowSensorPulseCount = 0;
 // time
 unsigned long currentTime;
 unsigned long flowSensorLastTime;
-// settings intervals
-unsigned int intervalLogServicePeriod = 10000;
-// timers
-RBD::Timer intervalLogServiceTimer;
+
 RBD::Timer ds18ConversionTimer;
 
 /*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*\
@@ -87,7 +81,6 @@ void setup() {
     Serial.println(F("Failed to initialize Ethernet library"));
     return;
   }
-  httpServer.begin();
   Serial.println(F("Server is ready."));
   Serial.print(F("Please connect to http://"));
   Serial.println(Ethernet.localIP());
@@ -116,15 +109,9 @@ void setup() {
             Settings
 \*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
 void getSettings() {
-  String responseText = doRequest(settingsServiceUri, "");
-  // TODO parse settings and fill values to variables
-  //intervalLogServicePeriod = 10000;
-  //settingsServiceUri 
-  //intervalLogServiceUri
+ 
   //ds18Precision
   ds18Sensors.requestTemperatures();
-  intervalLogServiceTimer.setTimeout(intervalLogServicePeriod);
-  intervalLogServiceTimer.restart();
   ds18ConversionTimer.setTimeout(DS18_CONVERSION_TIME);
   ds18ConversionTimer.restart();
 }
@@ -137,7 +124,7 @@ void loop() {
   resetWhen30Days();
 
     realTimeService();
-    intrevalLogService();
+ 
 }
 
 /*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*\
@@ -160,22 +147,6 @@ void realTimeService() {
   reqClient.print(data);
 
   reqClient.stop();
-}
-
-/*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*\
-            intrevalLogService
-\*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
-void intrevalLogService() {
-  if (intervalLogServiceTimer.getInverseValue() <= DS18_CONVERSION_TIME) {
-    ds18RequestTemperatures();
-  }
-
-  if (intervalLogServiceTimer.onRestart()) {
-    String data = createDataString();
-
-    String response = doRequest(intervalLogServiceUri, data);
-    Serial.println(response);
-  }
 }
 
 /*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*\
@@ -289,67 +260,6 @@ int getFlowData()
       // do reset
     }
   }
-
-  /*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*\
-            doRequest
-\*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
-  String doRequest(char reqUri, String reqData)
-  {
-    String responseText;
-
-    if (httpClient.connect(REST_SERVICE_URL, REST_SERVICE_PORT))
-    { //starts client connection, checks for connection
-      Serial.println("connected");
-
-      if (reqData.length())
-      { // do post request
-        httpClient.println((char)"POST" + reqUri + "HTTP/1.1");
-        //httpClient.println("Host: checkip.dyndns.com"); // TODO remove if not necessary
-        httpClient.println(F("Content-Type: application/csv;"));
-        httpClient.println(F("Content-Length: "));
-        httpClient.println(reqData.length());
-        httpClient.println();
-        httpClient.print(reqData);
-      } else { // do get request
-      httpClient.println( (char) "GET" +  reqUri + "HTTP/1.1");
-      //httpClient.println("Host: checkip.dyndns.com"); // TODO remove if not necessary
-      httpClient.println(F("Connection: close"));  //close 1.1 persistent connection  
-      httpClient.println(); //end of get request
-    }
-  } else {
-    Serial.println(F("connection failed")); //error message if no client connect
-    Serial.println();
-  }
-
-  while (httpClient.connected() && !httpClient.available()) {
-    delay(1);
-  } //waits for data
-  while (httpClient.connected() || httpClient.available()) { //connected or data available
-    responseText += httpClient.read(); //places captured byte in readString
-  }
-
-  return responseText;
-}
-
-/*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*\
-            readRequest
-\*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
-bool readRequest(EthernetClient& client) {
-  bool currentLineIsBlank = true;
-  while (client.connected()) {
-    if (client.available()) {
-      char c = client.read();
-      if (c == '\n' && currentLineIsBlank) {
-        return true;
-      } else if (c == '\n') {
-        currentLineIsBlank = true;
-      } else if (c != '\r') {
-        currentLineIsBlank = false;
-      }
-    }
-  }
-  return false;
-}
 
 /*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*\
             Количество свободной памяти
