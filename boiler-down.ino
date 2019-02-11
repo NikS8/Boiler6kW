@@ -70,8 +70,7 @@ RBD::Timer ds18ConversionTimer;
 #define TRIG_PIN 1
 #define ECHO_PIN 3
 HCSR04 hcsr04(TRIG_PIN, ECHO_PIN, 30, 4000); // пределы: от и до
-float taWaterSM;
-
+int taLevelWater;
 
 /*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*\
             setup
@@ -144,7 +143,7 @@ void realTimeService() {
   while (reqClient.available()) reqClient.read();
 
   txOn();
-  taWaterSM = hcsr04.distanceInMillimeters();
+  taLevelWater = hcsr04.distanceInMillimeters();
   txOff();
 
   String data = createDataString();
@@ -221,11 +220,11 @@ String createDataString() {
     resultData.concat(String(getFlowData()));
 
     resultData.concat(F(","));
-    resultData.concat(F("\n\"ta-water-sm\":"));
-    resultData.concat((350 - taWaterSM) / 10);
+    resultData.concat(F("\n\"ta-level\":"));
+    resultData.concat((360 - taLevelWater) / 10.0);
     resultData.concat(F(","));
-    resultData.concat(F("\n\"ta-water-%\":"));
-    resultData.concat((350 - taWaterSM) / 3.5);
+    resultData.concat(F("\n\"ta-level-filled%\":"));
+    resultData.concat((int)((360 - taLevelWater) / 3.6));
 
     resultData.concat(F("\n}"));
     resultData.concat(F(","));
