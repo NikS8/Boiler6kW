@@ -13,15 +13,16 @@
 04.02.2019 v10 добавлена функция freeRam()
 06.02.2019 v11 изменение вывода №№ DS18 и префикс заменен на "bd-"
 10.02.2019 v12 удален intrevalLogService
-10.02.2019 v13
+10.02.2019 v13 добавлено измерение уровня воды (дальномер HC-SR04)
 \*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
 /*******************************************************************\
-Сервер boiler6kw выдает данные: 
+Сервер boiler-down выдает данные: 
   аналоговые: 
     датчики трансформаторы тока  
   цифровые: 
     датчик скорости потока воды YF-B5
     датчики температуры DS18B20
+    дальномер HC-SR04 (измерение уровня воды)
 /*******************************************************************/
 
 #include <Ethernet2.h>
@@ -30,6 +31,7 @@
 #include <DallasTemperature.h>
 #include <EmonLib.h>
 #include <RBD_Timer.h>
+#include <hcsr04.h>
 
 #define DEVICE_ID "boiler-down";
 //String DEVICE_ID "boiler6kw";
@@ -64,6 +66,12 @@ unsigned long currentTime;
 unsigned long flowSensorLastTime;
 
 RBD::Timer ds18ConversionTimer;
+
+#define TRIG_PIN 1
+#define ECHO_PIN 3
+HCSR04 hcsr04(TRIG_PIN, ECHO_PIN, 30, 4000); // пределы: от и до
+float taWaterSM;
+
 
 /*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*\
             setup
@@ -100,8 +108,6 @@ void setup() {
   ds18Sensors.begin();
   ds18DeviceCount = ds18Sensors.getDeviceCount();
 
-  
-
   getSettings();
 
 }
@@ -136,6 +142,10 @@ void realTimeService() {
   if (!reqClient) return;
 
   while (reqClient.available()) reqClient.read();
+
+  txOn();
+  taWaterSM = hcsr04.distanceInMillimeters();
+  txOff();
 
   String data = createDataString();
 
@@ -209,7 +219,14 @@ String createDataString() {
     resultData.concat(F(","));
     resultData.concat(F("\n\"bd-flow\":"));
     resultData.concat(String(getFlowData()));
-    
+
+    resultData.concat(F(","));
+    resultData.concat(F("\n\"ta-water-sm\":"));
+    resultData.concat((350 - taWaterSM) / 10);
+    resultData.concat(F(","));
+    resultData.concat(F("\n\"ta-water-%\":"));
+    resultData.concat((350 - taWaterSM) / 3.5);
+
     resultData.concat(F("\n}"));
     resultData.concat(F(","));
     resultData.concat(F("\n\"freeRam\":"));
@@ -261,14 +278,20 @@ int getFlowData()
     }
   }
 
-/*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*\
+  /*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*\
+            Включение-выключение TX
+\*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
+  void txOff() { UCSR0B |= (1 << TXEN0); }
+  void txOn() { UCSR0B &= ~(1 << TXEN0); }
+
+  /*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*\
             Количество свободной памяти
 \*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
-int freeRam()
-{
-  extern int __heap_start, *__brkval;
-  int v;
-  return (int)&v - (__brkval == 0 ? (int)&__heap_start : (int)__brkval);
+  int freeRam()
+  {
+    extern int __heap_start, *__brkval;
+    int v;
+    return (int)&v - (__brkval == 0 ? (int)&__heap_start : (int)__brkval);
 }
 /*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*\
             end
