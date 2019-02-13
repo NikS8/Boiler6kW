@@ -142,6 +142,8 @@ void realTimeService() {
 
   while (reqClient.available()) reqClient.read();
 
+  ds18RequestTemperatures();
+
   txOn();
   taLevelWater = hcsr04.distanceInMillimeters();
   txOff();
