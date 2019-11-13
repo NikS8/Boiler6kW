@@ -1,5 +1,5 @@
 /*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*\
-                                                    boilerDown.ino 
+                                                   boiler-down.ino 
                             Copyright © 2018-2019, Zigfred & Nik.S
 31.12.2018 v1
 03.01.2019 v2 откалиброваны коэфициенты трансформаторов тока
@@ -14,6 +14,7 @@
 06.02.2019 v11 изменение вывода №№ DS18 и префикс заменен на "bd-"
 10.02.2019 v12 удален intrevalLogService
 10.02.2019 v13 добавлено измерение уровня воды (дальномер HC-SR04)
+13.11.2019 v14 переход на статические IP
 \*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
 /*******************************************************************\
 Сервер boiler-down выдает данные: 
@@ -26,22 +27,22 @@
 /*******************************************************************/
 
 #include <Ethernet2.h>
-#include <SPI.h>
 #include <OneWire.h>
 #include <DallasTemperature.h>
 #include <EmonLib.h>
 #include <RBD_Timer.h>
-#include <hcsr04.h>
+#include <HCSR04.h>   //  Библиотека Bifrost.Arduino.Sensors.HCSR04
 
 #define DEVICE_ID "boiler-down";
 //String DEVICE_ID "boiler6kw";
-#define VERSION 13
+#define VERSION 14
 
 #define RESET_UPTIME_TIME 43200000  //  = 30 * 24 * 60 * 60 * 1000 
                                     // reset after 30 days uptime 
 
-byte mac[] = {0xDE, 0xAD, 0xBE, 0xEF, 0xEE, 0xED};
-EthernetServer httpServer(40160);
+byte mac[] = {0xCA, 0x74, 0xBA, 0xCE, 0xBE, 0x01};
+IPAddress ip(192, 168, 1, 102);
+EthernetServer httpServer(40102); // Ethernet server
 
 EnergyMonitor emon1;
 EnergyMonitor emon2;
@@ -77,21 +78,19 @@ int taLevelWater;
 \*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
 void setup() {
   Serial.begin(9600);
+  Serial.println("Serial.begin(9600)"); 
 
-  Serial.print(F("FREE RAM: "));
-  Serial.println(freeRam());
-
-  Ethernet.begin(mac);
-    while (!Serial) continue;
-  delay(1000);
-    if (!Ethernet.begin(mac)) {
-    Serial.println(F("Failed to initialize Ethernet library"));
-    return;
-  }
+  Ethernet.begin(mac,ip);
+  
   Serial.println(F("Server is ready."));
   Serial.print(F("Please connect to http://"));
   Serial.println(Ethernet.localIP());
   
+  httpServer.begin();
+  
+  Serial.print(F("FREE RAM: "));
+  Serial.println(freeRam());
+
   pinMode( A1, INPUT );
   pinMode( A2, INPUT );
   pinMode( A3, INPUT );
